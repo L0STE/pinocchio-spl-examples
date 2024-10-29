@@ -1340,21 +1340,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "native-escrow"
-version = "0.1.0"
-dependencies = [
- "five8",
- "five8_const",
- "mollusk-svm",
- "pinocchio",
- "pinocchio-system",
- "pinocchio-token",
- "solana-nostd-sha256",
- "solana-sdk",
- "spl-token",
-]
-
-[[package]]
 name = "num"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1588,6 +1573,21 @@ source = "git+https://github.com/L0STE/pinocchio/?branch=spl-token#55d47bbdef7c9
 dependencies = [
  "pinocchio",
  "pinocchio-pubkey",
+]
+
+[[package]]
+name = "pinocchio_spl_examples"
+version = "0.1.0"
+dependencies = [
+ "five8",
+ "five8_const",
+ "mollusk-svm",
+ "pinocchio",
+ "pinocchio-system",
+ "pinocchio-token",
+ "solana-nostd-sha256",
+ "solana-sdk",
+ "spl-token",
 ]
 
 [[package]]

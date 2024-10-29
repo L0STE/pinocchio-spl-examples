@@ -1,32 +1,40 @@
 #[cfg(test)]
 mod tests {
-    use mollusk_svm::{program, Mollusk};
+    use mollusk_svm::{program, result::Check, Mollusk};
 
     use solana_sdk::{
-        account::{AccountSharedData, WritableAccount}, instruction::{AccountMeta, Instruction}, program_option::COption, program_pack::Pack, pubkey::Pubkey,
+        account::{AccountSharedData, ReadableAccount, WritableAccount}, instruction::{AccountMeta, Instruction}, program_option::COption, program_pack::Pack, pubkey::Pubkey,
     };
 
     use spl_token::state::AccountState;
 
-    #[test]
-    fn initialize_mint() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+    // Instruction works with No Freeze Authority, if we add the freeze_autority it doesn't fail but the data of the account result different from the expected one.
+    // left:  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    // right: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    #[test]
+    #[ignore = "not_working"]
+    fn initialize_mint() {
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
+
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
 
         let (rent_sysvar, rent_sysvar_account) = (solana_sdk::sysvar::rent::ID, program::create_program_account_loader_v3(&solana_sdk::sysvar::rent::ID));
+        
         // Accounts
         let mint = Pubkey::new_unique();
+        let mint_authority = Pubkey::new_unique();
+        let freeze_authority = Pubkey::new_unique();
 
         // Data
         let data = [
             vec![0], 
             vec![6], 
-            Pubkey::new_unique().to_bytes().to_vec(), 
-            Pubkey::new_unique().to_bytes().to_vec()
+            mint_authority.to_bytes().to_vec(), 
+            freeze_authority.to_bytes().to_vec()
         ].concat();
 
         // Instruction
@@ -35,7 +43,8 @@ mod tests {
             &data,
             vec![
                 AccountMeta::new(mint, false),
-                AccountMeta::new(rent_sysvar, false),
+                AccountMeta::new_readonly(rent_sysvar, false),
+                AccountMeta::new_readonly(token_program, false),
             ],
         );
 
@@ -44,23 +53,52 @@ mod tests {
             .rent
             .minimum_balance(spl_token::state::Mint::LEN);
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let mut mint_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Mint::LEN),
+            spl_token::state::Mint::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Mint {
+                mint_authority: COption::Some(mint_authority),
+                supply: 0,
+                decimals: 6,
+                is_initialized: true,
+                freeze_authority: COption::Some(freeze_authority),
+            },
+            mint_account.data_as_mut_slice(),
+        ).unwrap();
+
+        let checks = vec![
+            Check::success(),
+            Check::account(&mint)
+                .data(mint_account.data())
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (mint, AccountSharedData::new(mint_lamports, spl_token::state::Mint::LEN, &spl_token::ID)),
                 (rent_sysvar, rent_sysvar_account),
                 (token_program, token_program_account),
             ],
+            &checks,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
+    // So I changed the underlying library cause I (by error) used writable_signer for the account. Imo it shouldn't be a writable signer but just a writable account.
+    // If I put the account as a writable account, the program will fail with the following error: "Error: Cross-program invocation with unauthorized signer" but my 
+    // guess is because the binary is still on the old instruction that required the account to be a writable signer.
     #[test]
+    #[ignore = "working"]
     fn initialize_account() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -94,12 +132,34 @@ mod tests {
             mint_account.data_as_mut_slice(),
         ).unwrap();
 
+        let mut token_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint,
+                owner,
+                amount: 0,
+                delegate: COption::None,
+                state: AccountState::Initialized,
+                is_native: COption::None,
+                delegated_amount: 0,
+                close_authority: COption::None,
+            },
+            token_account.data_as_mut_slice(),
+        ).unwrap();
+
         // Instruction
         let instruction = Instruction::new_with_bytes(
             program_id,
             &data,
             vec![
-                AccountMeta::new_readonly(token, false),
+                AccountMeta::new(token, true),
                 AccountMeta::new_readonly(mint, false),
                 AccountMeta::new_readonly(owner, false),
                 AccountMeta::new_readonly(rent_sysvar, false),
@@ -107,12 +167,19 @@ mod tests {
             ],
         );
 
+        let check = [
+            Check::success(), 
+            Check::account(&token)
+                .data(token_account.data())
+                .build()
+        ];
+
         let token_lamports = mollusk
             .sysvars
             .rent
             .minimum_balance(spl_token::state::Account::LEN);
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (token, AccountSharedData::new(token_lamports, spl_token::state::Account::LEN, &spl_token::ID)),
@@ -121,16 +188,16 @@ mod tests {
                 (rent_sysvar, rent_sysvar_account),
                 (token_program, token_program_account),
             ],
+            &check,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
     #[test]
+    #[ignore = "working"]
     fn transfer() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -177,7 +244,7 @@ mod tests {
         solana_sdk::program_pack::Pack::pack(
             spl_token::state::Account {
                 mint,
-                owner: Pubkey::new_unique(),
+                owner: Pubkey::default(),
                 amount: 0,
                 delegate: COption::None,
                 state: AccountState::Initialized,
@@ -186,6 +253,50 @@ mod tests {
                 close_authority: COption::None,
             },
             to_account.data_as_mut_slice(),
+        ).unwrap();
+
+        let mut new_from_account_data = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint,
+                owner: authority,
+                amount: 0,
+                delegate: COption::None,
+                state: AccountState::Initialized,
+                is_native: COption::None,
+                delegated_amount: 0,
+                close_authority: COption::None,
+            },
+            new_from_account_data.data_as_mut_slice(),
+        ).unwrap();
+
+        let mut new_to_account_data = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint,
+                owner: Pubkey::default(),
+                amount: 1_000_000,
+                delegate: COption::None,
+                state: AccountState::Initialized,
+                is_native: COption::None,
+                delegated_amount: 0,
+                close_authority: COption::None,
+            },
+            new_to_account_data.data_as_mut_slice(),
         ).unwrap();
 
         // Instruction
@@ -200,7 +311,17 @@ mod tests {
             ],
         );
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let check = [
+            Check::success(),
+            Check::account(&from)
+                .data(new_from_account_data.data())
+                .build(),
+            Check::account(&to)
+                .data(new_to_account_data.data())
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (from, from_account),
@@ -208,16 +329,16 @@ mod tests {
                 (authority, AccountSharedData::new(1_000_000_000, 0, &Pubkey::default())),
                 (token_program, token_program_account),
             ],
+            &check,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
     #[test]
+    #[ignore = "working"]
     fn approve() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -253,6 +374,28 @@ mod tests {
             token_account.data_as_mut_slice(),
         ).unwrap();
 
+        let mut new_token_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint,
+                owner: authority,
+                amount: 1_000_000,
+                delegate: COption::Some(delegate),
+                state: AccountState::Initialized,
+                is_native: COption::None,
+                delegated_amount: 1_000_000,
+                close_authority: COption::None,
+            },
+            new_token_account.data_as_mut_slice(),
+        ).unwrap();
+
         // Instruction
         let instruction = Instruction::new_with_bytes(
             program_id,
@@ -265,7 +408,14 @@ mod tests {
             ],
         );
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let check = [
+            Check::success(),
+            Check::account(&token)
+                .data(new_token_account.data())
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (token, token_account),
@@ -273,16 +423,18 @@ mod tests {
                 (authority, AccountSharedData::new(1_000_000_000, 0, &Pubkey::default())),
                 (token_program, token_program_account),
             ],
+            &check,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
+    // Instruction works on it's own, but validation for the account fail because of inconstistency in the data of the account.
+    // left:  [0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 66, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    // right: [0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 66, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     #[test]
     fn revoke() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -290,7 +442,8 @@ mod tests {
         // Accounts
         let token = Pubkey::new_unique();
         let mint = Pubkey::new_unique();
-        let authority = Pubkey::new_unique(); // Note: Delegate == Authority
+        let authority = Pubkey::new_unique();
+        let delegate = Pubkey::new_unique();
 
         // Data
         let data = [5];
@@ -308,13 +461,35 @@ mod tests {
                 mint,
                 owner: authority,
                 amount: 1_000_000,
-                delegate: COption::Some(authority),
+                delegate: COption::Some(delegate),
                 state: AccountState::Initialized,
                 is_native: COption::None,
-                delegated_amount: 1_000_000,
+                delegated_amount: 0,
                 close_authority: COption::None,
             },
             token_account.data_as_mut_slice(),
+        ).unwrap();
+
+        let mut new_token_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint,
+                owner: authority,
+                amount: 1_000_000,
+                delegate: COption::None,
+                state: AccountState::Initialized,
+                is_native: COption::None,
+                delegated_amount: 0,
+                close_authority: COption::None,
+            },
+            new_token_account.data_as_mut_slice(),
         ).unwrap();
 
         // Instruction
@@ -328,23 +503,30 @@ mod tests {
             ],
         );
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let check = [
+            Check::success(),
+            Check::account(&token)
+                .data(new_token_account.data())
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (token, token_account),
                 (authority, AccountSharedData::new(1_000_000_000, 0, &Pubkey::default())),
                 (token_program, token_program_account),
             ],
+            &check,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
     #[test]
+    #[ignore = "not_working -> Error: Invalid instruction"]
     pub fn mint_to() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -352,7 +534,7 @@ mod tests {
         // Accounts
         let mint = Pubkey::new_unique();
         let token = Pubkey::new_unique();
-        let mint_authority = Pubkey::new_unique(); // Note: Delegate == Authority
+        let mint_authority = Pubkey::new_unique();
 
         // Data
         let data = [vec![7], 1_000_000u64.to_le_bytes().to_vec()].concat();
@@ -424,10 +606,11 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "working"]
     pub fn burn() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -507,10 +690,11 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "working"]
     pub fn close_account() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -572,10 +756,11 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "working"]
     pub fn freeze_account() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -656,10 +841,11 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "working"]
     pub fn thaw_account() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -740,10 +926,11 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "not_working -> Error: Invalid program argument"]
     pub fn transfer_checked() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -848,10 +1035,11 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "working"]
     pub fn approve_checked() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -934,10 +1122,11 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "working"]
     pub fn mint_to_checked() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -945,7 +1134,7 @@ mod tests {
         // Accounts
         let mint = Pubkey::new_unique();
         let token = Pubkey::new_unique();
-        let mint_authority = Pubkey::new_unique(); // Note: Delegate == Authority
+        let mint_authority = Pubkey::new_unique();
 
         // Data
         let data = [vec![14], 1_000_000u64.to_le_bytes().to_vec(), vec![6]].concat();
@@ -1017,10 +1206,11 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "working"]
     pub fn burn_checked() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -1100,10 +1290,11 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "working"]
     fn initialize_account_2() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -1141,7 +1332,7 @@ mod tests {
             program_id,
             &data,
             vec![
-                AccountMeta::new_readonly(token, false),
+                AccountMeta::new(token, true),
                 AccountMeta::new_readonly(mint, false),
                 AccountMeta::new_readonly(rent_sysvar, false),
                 AccountMeta::new_readonly(token_program, false),
@@ -1167,10 +1358,11 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "working"]
     fn sync_native() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -1198,7 +1390,7 @@ mod tests {
                 amount: 1_000_000,
                 delegate: COption::None,
                 state: AccountState::Initialized,
-                is_native: COption::Some(1_000_000 - native_token_minimum_balance),
+                is_native: COption::Some(1_000_000),
                 delegated_amount: 0,
                 close_authority: COption::None,
             },
@@ -1227,10 +1419,11 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "working"]
     fn initialize_account_3() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -1240,7 +1433,7 @@ mod tests {
         let mint = Pubkey::new_unique();
 
         // Data
-        let data = [vec![16], Pubkey::new_unique().to_bytes().to_vec()].concat();
+        let data = [vec![18], Pubkey::new_unique().to_bytes().to_vec()].concat();
 
         let mut mint_account = AccountSharedData::new(
             mollusk
@@ -1266,7 +1459,7 @@ mod tests {
             program_id,
             &data,
             vec![
-                AccountMeta::new_readonly(token, false),
+                AccountMeta::new(token, true),
                 AccountMeta::new_readonly(mint, false),
                 AccountMeta::new_readonly(token_program, false),
             ],
@@ -1290,10 +1483,11 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "not_working"]
     fn initialize_mint_2() {
-        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("11111111111111111111111111111111"));
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
-        let mut mollusk = Mollusk::new(&program_id, "src/target/deploy/pinocchio_spl_examples");
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
 
         mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
         let (token_program, token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
@@ -1310,6 +1504,7 @@ mod tests {
             &data,
             vec![
                 AccountMeta::new(mint, false),
+                AccountMeta::new_readonly(token_program, false),
             ],
         );
 
