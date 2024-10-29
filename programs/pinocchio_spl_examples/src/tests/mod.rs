@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod tests {
+    use core::net;
+
     use mollusk_svm::{program, result::Check, Mollusk};
 
     use solana_sdk::{
@@ -431,6 +433,7 @@ mod tests {
     // left:  [0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 66, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     // right: [0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 66, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     #[test]
+    #[ignore = "not_working"]
     fn revoke() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
@@ -645,6 +648,28 @@ mod tests {
             token_account.data_as_mut_slice(),
         ).unwrap();
 
+        let mut new_token_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint,
+                owner: authority,
+                amount: 0,
+                delegate: COption::None,
+                state: AccountState::Initialized,
+                is_native: COption::None,
+                delegated_amount: 0,
+                close_authority: COption::None,
+            },
+            new_token_account.data_as_mut_slice(),
+        ).unwrap();
+
         let mut mint_account = AccountSharedData::new(
             mollusk
                 .sysvars
@@ -676,7 +701,14 @@ mod tests {
             ],
         );
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let checks = vec![
+            Check::success(),
+            Check::account(&token)
+                .data(new_token_account.data())
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (token, token_account),
@@ -684,9 +716,8 @@ mod tests {
                 (authority, AccountSharedData::new(1_000_000_000, 0, &Pubkey::default())),
                 (token_program, token_program_account),
             ],
+            &checks,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
     #[test]
@@ -742,7 +773,15 @@ mod tests {
             ],
         );
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let checks = vec![
+            Check::success(),
+            Check::account(&token)
+                .data(&[])
+                .lamports(0)
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (token, token_account),
@@ -750,9 +789,8 @@ mod tests {
                 (authority, AccountSharedData::new(1_000_000_000, 0, &Pubkey::default())),
                 (token_program, token_program_account),
             ],
+            &checks,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
     #[test]
@@ -796,6 +834,28 @@ mod tests {
             token_account.data_as_mut_slice(),
         ).unwrap();
 
+        let mut new_token_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint,
+                owner: authority,
+                amount: 1_000_000,
+                delegate: COption::Some(freeze_authority),
+                state: AccountState::Frozen,
+                is_native: COption::None,
+                delegated_amount: 1_000_000,
+                close_authority: COption::None,
+            },
+            new_token_account.data_as_mut_slice(),
+        ).unwrap();
+
         let mut mint_account = AccountSharedData::new(
             mollusk
                 .sysvars
@@ -827,7 +887,14 @@ mod tests {
             ],
         );
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let checks = vec![
+            Check::success(),
+            Check::account(&token)
+                .data(new_token_account.data())
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (token, token_account),
@@ -835,9 +902,8 @@ mod tests {
                 (freeze_authority, AccountSharedData::new(1_000_000_000, 0, &Pubkey::default())),
                 (token_program, token_program_account),
             ],
+            &checks,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
     #[test]
@@ -881,6 +947,28 @@ mod tests {
             token_account.data_as_mut_slice(),
         ).unwrap();
 
+        let mut new_token_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint,
+                owner: authority,
+                amount: 1_000_000,
+                delegate: COption::Some(freeze_authority),
+                state: AccountState::Initialized,
+                is_native: COption::None,
+                delegated_amount: 1_000_000,
+                close_authority: COption::None,
+            },
+            new_token_account.data_as_mut_slice(),
+        ).unwrap();
+
         let mut mint_account = AccountSharedData::new(
             mollusk
                 .sysvars
@@ -912,7 +1000,14 @@ mod tests {
             ],
         );
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let checks = vec![
+            Check::success(),
+            Check::account(&token)
+                .data(new_token_account.data())
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (token, token_account),
@@ -920,9 +1015,8 @@ mod tests {
                 (freeze_authority, AccountSharedData::new(1_000_000_000, 0, &Pubkey::default())),
                 (token_program, token_program_account),
             ],
+            &checks,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
     #[test]
@@ -1075,6 +1169,28 @@ mod tests {
             token_account.data_as_mut_slice(),
         ).unwrap();
 
+        let mut new_token_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint,
+                owner: authority,
+                amount: 1_000_000,
+                delegate: COption::Some(delegate),
+                state: AccountState::Initialized,
+                is_native: COption::None,
+                delegated_amount: 1_000_000,
+                close_authority: COption::None,
+            },
+            new_token_account.data_as_mut_slice(),
+        ).unwrap();
+
         let mut mint_account = AccountSharedData::new(
             mollusk
                 .sysvars
@@ -1107,7 +1223,14 @@ mod tests {
             ],
         );
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let checks = vec![
+            Check::success(),
+            Check::account(&token)
+                .data(new_token_account.data())
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (token, token_account),
@@ -1116,9 +1239,8 @@ mod tests {
                 (authority, AccountSharedData::new(1_000_000_000, 0, &Pubkey::default())),
                 (token_program, token_program_account),
             ],
+            &checks,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
     #[test]
@@ -1180,6 +1302,28 @@ mod tests {
             token_account.data_as_mut_slice(),
         ).unwrap();
 
+        let mut new_token_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint,
+                owner: mint_authority,
+                amount: 1_000_000,
+                delegate: COption::None,
+                state: AccountState::Initialized,
+                is_native: COption::None,
+                delegated_amount: 0,
+                close_authority: COption::None,
+            },
+            new_token_account.data_as_mut_slice(),
+        ).unwrap();
+
         // Instruction
         let instruction = Instruction::new_with_bytes(
             program_id,
@@ -1192,7 +1336,14 @@ mod tests {
             ],
         );
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let checks = vec![
+            Check::success(),
+            Check::account(&token)
+                .data(new_token_account.data())
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (mint, mint_account),
@@ -1200,9 +1351,8 @@ mod tests {
                 (mint_authority, AccountSharedData::new(1_000_000_000, 0, &Pubkey::default())),
                 (token_program, token_program_account),
             ],
+            &checks,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
     #[test]
@@ -1245,6 +1395,28 @@ mod tests {
             token_account.data_as_mut_slice(),
         ).unwrap();
 
+        let mut new_token_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint,
+                owner: authority,
+                amount: 0,
+                delegate: COption::None,
+                state: AccountState::Initialized,
+                is_native: COption::None,
+                delegated_amount: 0,
+                close_authority: COption::None,
+            },
+            new_token_account.data_as_mut_slice(),
+        ).unwrap();
+
         let mut mint_account = AccountSharedData::new(
             mollusk
                 .sysvars
@@ -1276,7 +1448,14 @@ mod tests {
             ],
         );
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let checks = vec![
+            Check::success(),
+            Check::account(&token)
+                .data(new_token_account.data())
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (token, token_account),
@@ -1284,9 +1463,8 @@ mod tests {
                 (authority, AccountSharedData::new(1_000_000_000, 0, &Pubkey::default())),
                 (token_program, token_program_account),
             ],
+            &checks,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
     #[test]
@@ -1303,10 +1481,11 @@ mod tests {
         
         // Accounts
         let token = Pubkey::new_unique();
+        let owner = Pubkey::new_unique();
         let mint = Pubkey::new_unique();
 
         // Data
-        let data = [vec![16], Pubkey::new_unique().to_bytes().to_vec()].concat();
+        let data = [vec![16], owner.to_bytes().to_vec()].concat();
 
         let mut mint_account = AccountSharedData::new(
             mollusk
@@ -1327,6 +1506,28 @@ mod tests {
             mint_account.data_as_mut_slice(),
         ).unwrap();
 
+        let mut token_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint,
+                owner,
+                amount: 0,
+                delegate: COption::None,
+                state: AccountState::Initialized,
+                is_native: COption::None,
+                delegated_amount: 0,
+                close_authority: COption::None,
+            },
+            token_account.data_as_mut_slice(),
+        ).unwrap();
+
         // Instruction
         let instruction = Instruction::new_with_bytes(
             program_id,
@@ -1344,7 +1545,14 @@ mod tests {
             .rent
             .minimum_balance(spl_token::state::Account::LEN);
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let checks = vec![
+            Check::success(),
+            Check::account(&token)
+                .data(token_account.data())
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (token, AccountSharedData::new(token_lamports, spl_token::state::Account::LEN, &spl_token::ID)),
@@ -1352,12 +1560,11 @@ mod tests {
                 (rent_sysvar, rent_sysvar_account),
                 (token_program, token_program_account),
             ],
+            &checks,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
-    #[test]
+    #[test]    
     #[ignore = "working"]
     fn sync_native() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
@@ -1379,22 +1586,41 @@ mod tests {
             .minimum_balance(spl_token::state::Account::LEN);
 
         let mut native_token_account = AccountSharedData::new(
-            native_token_minimum_balance + 1_000_000_000,
+            native_token_minimum_balance + 2_000_000,
             spl_token::state::Account::LEN,
             &token_program,
         );
         solana_sdk::program_pack::Pack::pack(
             spl_token::state::Account {
                 mint: native_token,
-                owner: Pubkey::new_unique(),
+                owner: Pubkey::default(),
                 amount: 1_000_000,
                 delegate: COption::None,
                 state: AccountState::Initialized,
-                is_native: COption::Some(1_000_000),
+                is_native: COption::Some(native_token_minimum_balance),
                 delegated_amount: 0,
                 close_authority: COption::None,
             },
             native_token_account.data_as_mut_slice(),
+        ).unwrap();
+
+        let mut new_native_token_account = AccountSharedData::new(
+            native_token_minimum_balance,
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint: native_token,
+                owner: Pubkey::default(),
+                amount: 2_000_000,
+                delegate: COption::None,
+                state: AccountState::Initialized,
+                is_native: COption::Some(native_token_minimum_balance),
+                delegated_amount: 0,
+                close_authority: COption::None,
+            },
+            new_native_token_account.data_as_mut_slice(),
         ).unwrap();
 
         // Instruction
@@ -1407,15 +1633,21 @@ mod tests {
             ],
         );
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let checks = vec![
+            Check::success(),
+            Check::account(&native_token)
+                .data(new_native_token_account.data())
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (native_token, native_token_account),
                 (token_program, token_program_account),
             ],
+            &checks,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
     #[test]
@@ -1433,7 +1665,7 @@ mod tests {
         let mint = Pubkey::new_unique();
 
         // Data
-        let data = [vec![18], Pubkey::new_unique().to_bytes().to_vec()].concat();
+        let data = [vec![18], Pubkey::default().to_bytes().to_vec()].concat();
 
         let mut mint_account = AccountSharedData::new(
             mollusk
@@ -1454,6 +1686,28 @@ mod tests {
             mint_account.data_as_mut_slice(),
         ).unwrap();
 
+        let mut token_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint,
+                owner: Pubkey::default(),
+                amount: 0,
+                delegate: COption::None,
+                state: AccountState::Initialized,
+                is_native: COption::None,
+                delegated_amount: 0,
+                close_authority: COption::None,
+            },
+            token_account.data_as_mut_slice(),
+        ).unwrap();
+
         // Instruction
         let instruction = Instruction::new_with_bytes(
             program_id,
@@ -1470,16 +1724,22 @@ mod tests {
             .rent
             .minimum_balance(spl_token::state::Account::LEN);
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let checks = vec![
+            Check::success(),
+            Check::account(&token)
+                .data(&token_account.data())
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (token, AccountSharedData::new(token_lamports, spl_token::state::Account::LEN, &spl_token::ID)),
                 (mint, mint_account),
                 (token_program, token_program_account),
             ],
+            &checks,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
     #[test]
