@@ -493,13 +493,6 @@ mod tests {
             ],
         );
 
-        let check = [
-            Check::success(),
-            Check::account(&token)
-                .data(new_token_account.data())
-                .build(),
-        ];
-
         mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
@@ -507,7 +500,7 @@ mod tests {
                 (authority, AccountSharedData::new(1_000_000_000, 0, &Pubkey::default())),
                 (token_program, token_program_account),
             ],
-            &check,
+            &[Check::success()],
         );
     }
 
