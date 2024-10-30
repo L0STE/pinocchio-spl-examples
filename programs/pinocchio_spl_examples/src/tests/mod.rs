@@ -1792,8 +1792,8 @@ mod tests {
         );
     }
 
-    #[test]    
-    #[ignore = "working"]
+    #[test]  
+    #[ignore = "working"]  
     fn sync_native() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 

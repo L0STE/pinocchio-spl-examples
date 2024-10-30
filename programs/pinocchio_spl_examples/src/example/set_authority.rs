@@ -11,8 +11,6 @@ pub fn set_authority(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
 
     let authority_type = unsafe { *(data.as_ptr() as *const AuthorityType) };
 
-    msg!("authority_type: {:?}", authority_type);
-
     let new_authority = Some( unsafe { *(data.as_ptr().add(1) as *const [u8; 32]) });
 
     SetAuthority { 
