@@ -514,7 +514,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "not_working -> Error: Invalid instruction Data"]
+    #[ignore = "working"]
     pub fn mint_to() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
@@ -572,6 +572,28 @@ mod tests {
             token_account.data_as_mut_slice(),
         ).unwrap();
 
+        let mut new_token_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint,
+                owner: mint_authority,
+                amount: 1_000_000,
+                delegate: COption::None,
+                state: AccountState::Initialized,
+                is_native: COption::None,
+                delegated_amount: 0,
+                close_authority: COption::None,
+            },
+            new_token_account.data_as_mut_slice(),
+        ).unwrap();
+
         // Instruction
         let instruction = Instruction::new_with_bytes(
             program_id,
@@ -584,7 +606,14 @@ mod tests {
             ],
         );
 
-        let result: mollusk_svm::result::InstructionResult = mollusk.process_instruction(
+        let checks = vec![
+            Check::success(),
+            Check::account(&token)
+                .data(new_token_account.data())
+                .build(),
+        ];
+
+        mollusk.process_and_validate_instruction(
             &instruction,
             &vec![
                 (mint, mint_account),
@@ -592,9 +621,8 @@ mod tests {
                 (mint_authority, AccountSharedData::new(1_000_000_000, 0, &Pubkey::default())),
                 (token_program, token_program_account),
             ],
+            &checks,
         );
-
-        assert!(!result.program_result.is_err());
     }
 
     #[test]
@@ -1732,7 +1760,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "not_working -> Error: Invalid instruction Data"]
+    #[ignore = "working"]
     fn initialize_mint_2() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
