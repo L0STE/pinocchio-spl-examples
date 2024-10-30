@@ -65,7 +65,7 @@ impl TryFrom<&u8> for TestInstruction {
             16 => Ok(TestInstruction::InitializeAccount2),
             17 => Ok(TestInstruction::SyncNative),
             18 => Ok(TestInstruction::InitializeAccount3),
-            21 => Ok(TestInstruction::InitializeMint2),
+            20 => Ok(TestInstruction::InitializeMint2),
             _ => Err(ProgramError::InvalidInstructionData),
         }
     }

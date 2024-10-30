@@ -1037,7 +1037,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "not_working -> Error: Invalid program argument"]
+    #[ignore = "not_working"]
     pub fn transfer_checked() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
@@ -1088,7 +1088,7 @@ mod tests {
         solana_sdk::program_pack::Pack::pack(
             spl_token::state::Account {
                 mint,
-                owner: Pubkey::new_unique(),
+                owner: Pubkey::default(),
                 amount: 0,
                 delegate: COption::None,
                 state: AccountState::Initialized,
