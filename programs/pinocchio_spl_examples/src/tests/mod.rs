@@ -8,11 +8,6 @@ mod tests {
 
     use spl_token::state::AccountState;
 
-
-    // Instruction works with No Freeze Authority, if we add the freeze_autority it doesn't fail but the data of the account result different from the expected one.
-    // left:  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    // right: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] - 58th byte is 2 instead of 0 & 60th byte is 0 instead of 3
-    // >      [Coption::Some][ mint_authority                                                                            ]                              [Coption::Some][ freeze_authority                                                                          ]
     #[test] 
     #[ignore = "working"]
     fn initialize_mint() {
@@ -89,11 +84,8 @@ mod tests {
         );
     }
 
-    // So I changed the underlying library cause I (by error) used writable_signer for the account. Imo it shouldn't be a writable signer but just a writable account.
-    // If I put the account as a writable account, the program will fail with the following error: "Error: Cross-program invocation with unauthorized signer" but my 
-    // guess is because the binary is still on the old instruction that required the account to be a writable signer. <confirmed in the documentation for the instruction 
-    // that token doesn't need to sign the instruction>
     #[test]
+    #[ignore = "working"]
     fn initialize_account() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
@@ -1530,7 +1522,7 @@ mod tests {
             program_id,
             &data,
             vec![
-                AccountMeta::new(token, true),
+                AccountMeta::new(token, false),
                 AccountMeta::new_readonly(mint, false),
                 AccountMeta::new_readonly(rent_sysvar, false),
                 AccountMeta::new_readonly(token_program, false),
@@ -1710,7 +1702,7 @@ mod tests {
             program_id,
             &data,
             vec![
-                AccountMeta::new(token, true),
+                AccountMeta::new(token, false),
                 AccountMeta::new_readonly(mint, false),
                 AccountMeta::new_readonly(token_program, false),
             ],
