@@ -8,9 +8,12 @@ crate-type = ["cdylib", "lib"]
 
 [dependencies]
 solana-nostd-sha256 = "0.1.3"
-pinocchio = { git = "https://github.com/L0STE/pinocchio/", branch = "spl-token" }
-pinocchio-system = { git = "https://github.com/L0STE/pinocchio/", branch = "spl-token" }
-pinocchio-token = { git = "https://github.com/L0STE/pinocchio/", branch = "spl-token" }
+# pinocchio = { git = "https://github.com/L0STE/pinocchio/", branch = "spl-token" }
+# pinocchio-system = { git = "https://github.com/L0STE/pinocchio/", branch = "spl-token" }
+# pinocchio-token = { git = "https://github.com/L0STE/pinocchio/", branch = "spl-token" }
+pinocchio = { path = "../../../pinocchio/sdk/pinocchio" }
+pinocchio-token = { path = "../../../pinocchio/programs/token" }
+
 five8_const = "0.1.3"
 five8 = "0.2.1"
 

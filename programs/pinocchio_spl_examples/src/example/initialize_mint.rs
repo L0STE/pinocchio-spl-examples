@@ -17,7 +17,7 @@ pub fn initialize_mint(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
         rent_sysvar,
         decimals,
         mint_authority,
-        freeze_authority: Some(unsafe { *(data.as_ptr().add(33) as *mut [u8; 32]) }),
+        freeze_authority: Some(mint_authority),
         
     }.invoke()?;
    

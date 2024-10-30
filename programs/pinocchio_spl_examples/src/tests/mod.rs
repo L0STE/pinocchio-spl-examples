@@ -1,7 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use core::net;
-
     use mollusk_svm::{program, result::Check, Mollusk};
 
     use solana_sdk::{
@@ -12,10 +10,11 @@ mod tests {
 
 
     // Instruction works with No Freeze Authority, if we add the freeze_autority it doesn't fail but the data of the account result different from the expected one.
-    // left:  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    // right: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    #[test]
-    #[ignore = "not_working"]
+    // left:  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    // right: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] - 58th byte is 2 instead of 0 & 60th byte is 0 instead of 3
+    // >      [Coption::Some][ mint_authority                                                                            ]                              [Coption::Some][ freeze_authority                                                                          ]
+    #[test] 
+    #[ignore = "working"]
     fn initialize_mint() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
@@ -29,14 +28,12 @@ mod tests {
         // Accounts
         let mint = Pubkey::new_unique();
         let mint_authority = Pubkey::new_unique();
-        let freeze_authority = Pubkey::new_unique();
 
         // Data
         let data = [
             vec![0], 
             vec![6], 
             mint_authority.to_bytes().to_vec(), 
-            freeze_authority.to_bytes().to_vec()
         ].concat();
 
         // Instruction
@@ -65,11 +62,11 @@ mod tests {
         );
         solana_sdk::program_pack::Pack::pack(
             spl_token::state::Mint {
-                mint_authority: COption::Some(mint_authority),
-                supply: 0,
-                decimals: 6,
-                is_initialized: true,
-                freeze_authority: COption::Some(freeze_authority),
+                mint_authority: COption::Some(mint_authority),      // 32 + 4 = 36
+                supply: 0,                                          // 8
+                decimals: 6,                                        // 1
+                is_initialized: true,                               // 1
+                freeze_authority: COption::Some(mint_authority),    // 32 + 4 = 36
             },
             mint_account.data_as_mut_slice(),
         ).unwrap();
@@ -94,9 +91,9 @@ mod tests {
 
     // So I changed the underlying library cause I (by error) used writable_signer for the account. Imo it shouldn't be a writable signer but just a writable account.
     // If I put the account as a writable account, the program will fail with the following error: "Error: Cross-program invocation with unauthorized signer" but my 
-    // guess is because the binary is still on the old instruction that required the account to be a writable signer.
+    // guess is because the binary is still on the old instruction that required the account to be a writable signer. <confirmed in the documentation for the instruction 
+    // that token doesn't need to sign the instruction>
     #[test]
-    #[ignore = "working"]
     fn initialize_account() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
@@ -161,7 +158,7 @@ mod tests {
             program_id,
             &data,
             vec![
-                AccountMeta::new(token, true),
+                AccountMeta::new(token, false),
                 AccountMeta::new_readonly(mint, false),
                 AccountMeta::new_readonly(owner, false),
                 AccountMeta::new_readonly(rent_sysvar, false),
@@ -525,7 +522,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "not_working -> Error: Invalid instruction"]
+    #[ignore = "not_working -> Error: Invalid instruction Data"]
     pub fn mint_to() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
@@ -1743,7 +1740,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "not_working"]
+    #[ignore = "not_working -> Error: Invalid instruction Data"]
     fn initialize_mint_2() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
@@ -1783,5 +1780,4 @@ mod tests {
 
         assert!(!result.program_result.is_err());
     }
-
 }

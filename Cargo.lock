@@ -1546,30 +1546,18 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 [[package]]
 name = "pinocchio"
 version = "0.6.0"
-source = "git+https://github.com/L0STE/pinocchio/?branch=spl-token#55d47bbdef7c951306f454eb8d77e5f81bc9a12c"
 
 [[package]]
 name = "pinocchio-pubkey"
 version = "0.2.1"
-source = "git+https://github.com/L0STE/pinocchio/?branch=spl-token#55d47bbdef7c951306f454eb8d77e5f81bc9a12c"
 dependencies = [
  "five8_const",
  "pinocchio",
 ]
 
 [[package]]
-name = "pinocchio-system"
-version = "0.2.0"
-source = "git+https://github.com/L0STE/pinocchio/?branch=spl-token#55d47bbdef7c951306f454eb8d77e5f81bc9a12c"
-dependencies = [
- "pinocchio",
- "pinocchio-pubkey",
-]
-
-[[package]]
 name = "pinocchio-token"
 version = "0.1.0"
-source = "git+https://github.com/L0STE/pinocchio/?branch=spl-token#55d47bbdef7c951306f454eb8d77e5f81bc9a12c"
 dependencies = [
  "pinocchio",
  "pinocchio-pubkey",
@@ -1583,7 +1571,6 @@ dependencies = [
  "five8_const",
  "mollusk-svm",
  "pinocchio",
- "pinocchio-system",
  "pinocchio-token",
  "solana-nostd-sha256",
  "solana-sdk",

@@ -16,7 +16,7 @@ pub fn initialize_mint_2(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult
         mint,
         decimals,
         mint_authority,
-        freeze_authority: None,
+        freeze_authority: Some(mint_authority),
     }.invoke()?;
    
     Ok(())
