@@ -27,7 +27,7 @@ pub enum TestInstruction {
     MintToChecked,
     MintTo,
     Revoke,
-    // SetAuthority, -> todo after fixing the issue
+    SetAuthority,
     SyncNative,
     ThawAccount,
     TransferChecked,
@@ -53,6 +53,7 @@ impl TryFrom<&u8> for TestInstruction {
             3 => Ok(TestInstruction::Transfer),
             4 => Ok(TestInstruction::Approve),
             5 => Ok(TestInstruction::Revoke),
+            6 => Ok(TestInstruction::SetAuthority),
             7 => Ok(TestInstruction::MintTo),
             8 => Ok(TestInstruction::Burn),
             9 => Ok(TestInstruction::CloseAccount),
