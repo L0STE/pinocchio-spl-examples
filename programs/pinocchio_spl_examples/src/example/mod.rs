@@ -20,6 +20,9 @@ pub mod initialize_account_2;
 pub mod initialize_account_3;
 pub mod initialize_account;
 
+pub mod token_getters;
+pub mod mint_getters;
+
 #[derive(Clone, Copy, Debug)]
 pub enum TestInstruction {
     InitializeMint2,
@@ -41,6 +44,9 @@ pub enum TestInstruction {
     InitializeAccount2,
     InitializeAccount3,
     InitializeAccount,
+
+    TokenGetters,
+    MintGetters,
 }
 
 impl TryFrom<&u8> for TestInstruction {
@@ -67,6 +73,9 @@ impl TryFrom<&u8> for TestInstruction {
             17 => Ok(TestInstruction::SyncNative),
             18 => Ok(TestInstruction::InitializeAccount3),
             20 => Ok(TestInstruction::InitializeMint2),
+
+            98 => Ok(TestInstruction::TokenGetters),
+            99 => Ok(TestInstruction::MintGetters),
             _ => Err(ProgramError::InvalidInstructionData),
         }
     }

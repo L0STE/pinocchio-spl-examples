@@ -2011,4 +2011,78 @@ mod tests {
 
         assert!(!result.program_result.is_err());
     }
+
+    #[test]
+    fn mint_getters() {
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
+
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
+
+        mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
+        let (token_program, _token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
+
+        // Accounts
+        let mint = Pubkey::new_unique();
+
+        let mut mint_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Mint::LEN),
+            spl_token::state::Mint::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Mint {
+                mint_authority: COption::None,
+                supply: 100_000_000_000,
+                decimals: 6,
+                is_initialized: true,
+                freeze_authority: COption::None,
+            },
+            mint_account.data_as_mut_slice(),
+        ).unwrap();
+
+        // Instruction
+        mollusk.process_and_validate_instruction(
+            &Instruction::new_with_bytes(
+                program_id,
+                &[vec![99], vec![0], Pubkey::new_unique().to_bytes().to_vec(), 100_000_000_000u64.to_le_bytes().to_vec(), vec![6], vec![1], vec![0], Pubkey::new_unique().to_bytes().to_vec()].concat(),
+                vec![
+                    AccountMeta::new(mint, false),
+                ],
+            ),
+            &vec![
+                (mint, mint_account.clone()),
+            ],
+            &[Check::success()],
+        );
+
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Mint {
+                mint_authority: COption::Some(Pubkey::default()),
+                supply: 100_000_000_000,
+                decimals: 6,
+                is_initialized: false,
+                freeze_authority: COption::Some(Pubkey::default()),
+            },
+            mint_account.data_as_mut_slice(),
+        ).unwrap();
+
+        // Instruction
+        mollusk.process_and_validate_instruction(
+            &Instruction::new_with_bytes(
+                program_id,
+                &[vec![99], vec![1], Pubkey::default().to_bytes().to_vec(), 100_000_000_000u64.to_le_bytes().to_vec(), vec![6], vec![0], vec![1], Pubkey::default().to_bytes().to_vec()].concat(),
+                vec![
+                    AccountMeta::new(mint, false),
+                ],
+            ),
+            &vec![
+                (mint, mint_account.clone()),
+            ],
+            &[Check::success()],
+        );
+    }
+
 }

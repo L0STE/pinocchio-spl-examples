@@ -1,5 +1,5 @@
 use pinocchio::{
-    account_info::AccountInfo, ProgramResult, program_error::ProgramError, msg,
+    account_info::AccountInfo, ProgramResult, program_error::ProgramError,
 };
 
 use pinocchio_token::instructions::{SetAuthority, AuthorityType};

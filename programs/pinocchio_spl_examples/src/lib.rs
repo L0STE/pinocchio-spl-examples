@@ -7,7 +7,8 @@ use example::{TestInstruction, transfer::transfer, revoke::revoke, thaw_account:
     initialize_mint::initialize_mint, initialize_mint_2::initialize_mint_2, mint_to_checked::mint_to_checked, 
     approve_checked::approve_checked, approve::approve, burn_checked::burn_checked, burn::burn, 
     close_account::close_account, freeze_account::freeze_account, initialize_account::initialize_account,
-    initialize_account_2::initialize_account_2, initialize_account_3::initialize_account_3, set_authority::set_authority
+    initialize_account_2::initialize_account_2, initialize_account_3::initialize_account_3, 
+    set_authority::set_authority, mint_getters::mint_getters, token_getters::token_getters
 };
 
 use pinocchio::account_info::AccountInfo;
@@ -49,5 +50,8 @@ fn process_instruction(
         TestInstruction::MintToChecked => mint_to_checked(accounts, data),
         TestInstruction::SetAuthority => set_authority(accounts, data),
         TestInstruction::SyncNative => sync_native(accounts),
+
+        TestInstruction::TokenGetters => token_getters(accounts, data),
+        TestInstruction::MintGetters => mint_getters(accounts, data),
     }
 }
