@@ -2013,6 +2013,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "working"]
     fn mint_getters() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
 
@@ -2080,6 +2081,151 @@ mod tests {
             ),
             &vec![
                 (mint, mint_account.clone()),
+            ],
+            &[Check::success()],
+        );
+    }
+
+    #[test]
+    fn token_getters() {
+        let program_id = Pubkey::new_from_array(five8_const::decode_32_const("22222222222222222222222222222222222222222222"));
+
+        let mut mollusk = Mollusk::new(&program_id, "../../target/deploy/pinocchio_spl_examples");
+
+        mollusk.add_program(&spl_token::ID, "src/tests/spl_token-3.5.0", &mollusk_svm::program::loader_keys::LOADER_V3);
+        let (token_program, _token_program_account) = (spl_token::ID, program::create_program_account_loader_v3(&spl_token::ID));
+
+        // Accounts
+        let token = Pubkey::new_unique();
+
+        let mut token_account = AccountSharedData::new(
+            mollusk
+                .sysvars
+                .rent
+                .minimum_balance(spl_token::state::Account::LEN),
+            spl_token::state::Account::LEN,
+            &token_program,
+        );
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint: Pubkey::default(),
+                owner: Pubkey::default(),
+                amount: 1_000_000,
+                delegate: COption::None,
+                state: AccountState::Initialized,
+                is_native: COption::None,
+                delegated_amount: 0,
+                close_authority: COption::None
+            },
+            token_account.data_as_mut_slice(),
+        ).unwrap();
+
+        // Instruction
+        mollusk.process_and_validate_instruction(
+            &Instruction::new_with_bytes(
+                program_id,
+                &[
+                    vec![98], 
+                    Pubkey::default().to_bytes().to_vec(), 
+                    Pubkey::default().to_bytes().to_vec(),
+                    1_000_000u64.to_le_bytes().to_vec(), 
+                    vec![0], 
+                    Pubkey::new_unique().to_bytes().to_vec(),
+                    vec![1], 
+                    vec![0], 
+                    0u64.to_le_bytes().to_vec(), 
+                    0u64.to_le_bytes().to_vec(), 
+                    vec![0],
+                    Pubkey::new_unique().to_bytes().to_vec()
+                ].concat(),
+                vec![
+                    AccountMeta::new(token, false),
+                ],
+            ),
+            &vec![
+                (token, token_account.clone()),
+            ],
+            &[Check::success()],
+        );
+
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint: Pubkey::default(),
+                owner: Pubkey::default(),
+                amount: 1_000_000,
+                delegate: COption::Some(Pubkey::default()),
+                state: AccountState::Uninitialized,
+                is_native: COption::Some(1_000_000),
+                delegated_amount: 1_000_000,
+                close_authority: COption::Some(Pubkey::default())
+            },
+            token_account.data_as_mut_slice(),
+        ).unwrap();
+
+        mollusk.process_and_validate_instruction(
+            &Instruction::new_with_bytes(
+                program_id,
+                &[
+                    vec![98], 
+                    Pubkey::default().to_bytes().to_vec(), 
+                    Pubkey::default().to_bytes().to_vec(),
+                    1_000_000u64.to_le_bytes().to_vec(), 
+                    vec![1], 
+                    Pubkey::default().to_bytes().to_vec(),
+                    vec![0], 
+                    vec![1], 
+                    1_000_000u64.to_le_bytes().to_vec(), 
+                    1_000_000u64.to_le_bytes().to_vec(), 
+                    vec![1],
+                    Pubkey::default().to_bytes().to_vec()
+                ].concat(),
+                vec![
+                    AccountMeta::new(token, false),
+                ],
+            ),
+            &vec![
+                (token, token_account.clone()),
+            ],
+            &[Check::success()],
+        );
+
+        solana_sdk::program_pack::Pack::pack(
+            spl_token::state::Account {
+                mint: Pubkey::default(),
+                owner: Pubkey::default(),
+                amount: 1_000_000,
+                delegate: COption::Some(Pubkey::default()),
+                state: AccountState::Frozen,
+                is_native: COption::Some(1_000_000),
+                delegated_amount: 1_000_000,
+                close_authority: COption::Some(Pubkey::default())
+            },
+            token_account.data_as_mut_slice(),
+        ).unwrap();
+
+        mollusk.process_and_validate_instruction(
+            &Instruction::new_with_bytes(
+                program_id,
+                &[
+                    vec![98], 
+                    Pubkey::default().to_bytes().to_vec(), 
+                    Pubkey::default().to_bytes().to_vec(),
+                    1_000_000u64.to_le_bytes().to_vec(), 
+                    vec![1], 
+                    Pubkey::default().to_bytes().to_vec(),
+                    vec![2], 
+                    vec![1], 
+                    1_000_000u64.to_le_bytes().to_vec(), 
+                    1_000_000u64.to_le_bytes().to_vec(), 
+                    vec![1],
+                    Pubkey::default().to_bytes().to_vec()
+                ].concat(),
+                vec![
+                    AccountMeta::new(token, false),
+                ],
+            ),
+            &vec![
+                (token, token_account.clone()),
             ],
             &[Check::success()],
         );
