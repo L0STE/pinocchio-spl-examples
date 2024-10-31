@@ -1,5 +1,5 @@
 use pinocchio::{
-    account_info::AccountInfo, ProgramResult, program_error::ProgramError,
+    account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey, ProgramResult
 };
 
 use pinocchio_token::instructions::{SetAuthority, AuthorityType};
@@ -11,13 +11,13 @@ pub fn set_authority(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
 
     let authority_type = unsafe { *(data.as_ptr() as *const AuthorityType) };
 
-    let new_authority = Some( unsafe { *(data.as_ptr().add(1) as *const [u8; 32]) });
+    let new_authority = unsafe { *(data.as_ptr().add(1) as *const Pubkey) };
 
     SetAuthority { 
         account,
         authority,
         authority_type,
-        new_authority,
+        new_authority: Some(&new_authority),
     }.invoke()?;
    
     Ok(())

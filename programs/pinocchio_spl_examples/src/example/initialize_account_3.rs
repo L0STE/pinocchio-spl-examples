@@ -23,7 +23,7 @@ pub fn initialize_account_3(
     InitilizeAccount3 {
         token,
         mint,
-        owner,
+        owner: &owner,
     }.invoke()?;
 
     Ok(())

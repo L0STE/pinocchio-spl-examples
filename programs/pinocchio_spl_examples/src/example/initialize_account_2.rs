@@ -25,7 +25,7 @@ pub fn initialize_account_2(
         token,
         mint,
         rent_sysvar,
-        owner,
+        owner: &owner,
     }.invoke()?;
 
     Ok(())
