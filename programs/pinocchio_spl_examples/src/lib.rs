@@ -2,20 +2,22 @@
 mod tests;
 
 mod example;
-use example::{TestInstruction, transfer::transfer, revoke::revoke, thaw_account::thaw_account, 
-    transfer_checked::transfer_checked, sync_native::sync_native, mint_to::mint_to,
-    initialize_mint::initialize_mint, initialize_mint_2::initialize_mint_2, mint_to_checked::mint_to_checked, 
-    approve_checked::approve_checked, approve::approve, burn_checked::burn_checked, burn::burn, 
-    close_account::close_account, freeze_account::freeze_account, initialize_account::initialize_account,
-    initialize_account_2::initialize_account_2, initialize_account_3::initialize_account_3, 
-    set_authority::set_authority, mint_getters::mint_getters, token_getters::token_getters
+use example::{
+    approve::approve, approve_checked::approve_checked, burn::burn, burn_checked::burn_checked,
+    close_account::close_account, freeze_account::freeze_account,
+    initialize_account::initialize_account, initialize_account_2::initialize_account_2,
+    initialize_account_3::initialize_account_3, initialize_mint::initialize_mint,
+    initialize_mint_2::initialize_mint_2, mint_getters::mint_getters, mint_to::mint_to,
+    mint_to_checked::mint_to_checked, revoke::revoke, set_authority::set_authority,
+    sync_native::sync_native, thaw_account::thaw_account, token_getters::token_getters,
+    transfer::transfer, transfer_checked::transfer_checked, TestInstruction,
 };
 
 use pinocchio::account_info::AccountInfo;
 use pinocchio::entrypoint;
+use pinocchio::program_error::ProgramError;
 use pinocchio::pubkey::Pubkey;
 use pinocchio::ProgramResult;
-use pinocchio::program_error::ProgramError;
 
 entrypoint!(process_instruction);
 

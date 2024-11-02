@@ -1,6 +1,4 @@
-use pinocchio::{
-    account_info::AccountInfo, ProgramResult, program_error::ProgramError,
-};
+use pinocchio::{account_info::AccountInfo, program_error::ProgramError, ProgramResult};
 
 use pinocchio_token::instructions::Transfer;
 
@@ -11,12 +9,13 @@ pub fn transfer(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
 
     let amount = unsafe { *(data.as_ptr() as *const u64) };
 
-    Transfer { 
-        from, 
-        to, 
-        authority, 
-        amount 
-    }.invoke()?;
-   
+    Transfer {
+        from,
+        to,
+        authority,
+        amount,
+    }
+    .invoke()?;
+
     Ok(())
 }

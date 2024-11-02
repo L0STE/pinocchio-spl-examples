@@ -1,6 +1,4 @@
-use pinocchio::{
-    account_info::AccountInfo, ProgramResult, program_error::ProgramError,
-};
+use pinocchio::{account_info::AccountInfo, program_error::ProgramError, ProgramResult};
 
 use pinocchio_token::instructions::SyncNative;
 
@@ -9,9 +7,7 @@ pub fn sync_native(accounts: &[AccountInfo]) -> ProgramResult {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
-    SyncNative { 
-        native_token 
-    }.invoke()?;
-   
+    SyncNative { native_token }.invoke()?;
+
     Ok(())
 }

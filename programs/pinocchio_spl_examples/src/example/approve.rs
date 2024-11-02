@@ -1,20 +1,9 @@
-use pinocchio::{
-    account_info::AccountInfo, ProgramResult, program_error::ProgramError
-};
+use pinocchio::{account_info::AccountInfo, program_error::ProgramError, ProgramResult};
 
 use pinocchio_token::instructions::Approve;
 
-pub fn approve(
-    accounts: &[AccountInfo],
-    data: &[u8]
-) -> ProgramResult {
-
-    let [
-        token,
-        delegate,
-        authority,
-        _token_program,
-    ] = accounts else {
+pub fn approve(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
+    let [token, delegate, authority, _token_program] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
@@ -25,7 +14,8 @@ pub fn approve(
         delegate,
         authority,
         amount,
-    }.invoke()?;
+    }
+    .invoke()?;
 
     Ok(())
 }

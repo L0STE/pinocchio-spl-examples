@@ -1,6 +1,4 @@
-use pinocchio::{
-    account_info::AccountInfo, ProgramResult, program_error::ProgramError,
-};
+use pinocchio::{account_info::AccountInfo, program_error::ProgramError, ProgramResult};
 
 use pinocchio_token::state::Mint;
 
@@ -24,7 +22,7 @@ pub fn mint_getters(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     let supply = unsafe { *(data.as_ptr().add(33) as *const u64) };
     assert_eq!(mint_account.supply(), supply);
 
-    let decimals = unsafe { *(data.as_ptr().add(41) as *const u8) };
+    let decimals = unsafe { *(data.as_ptr().add(41)) };
     assert_eq!(mint_account.decimals(), decimals);
 
     let is_initialized = unsafe { *(data.as_ptr().add(42) as *const bool) };

@@ -1,20 +1,9 @@
-use pinocchio::{
-    account_info::AccountInfo, ProgramResult, program_error::ProgramError,
-};
+use pinocchio::{account_info::AccountInfo, program_error::ProgramError, ProgramResult};
 
 use pinocchio_token::instructions::Burn;
 
-pub fn burn(
-    accounts: &[AccountInfo],
-    data: &[u8]
-) -> ProgramResult {
-
-    let [
-        token,
-        mint,
-        authority,
-        _token_program,
-    ] = accounts else {
+pub fn burn(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
+    let [token, mint, authority, _token_program] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
@@ -25,7 +14,8 @@ pub fn burn(
         mint,
         authority,
         amount,
-    }.invoke()?;
+    }
+    .invoke()?;
 
     Ok(())
 }

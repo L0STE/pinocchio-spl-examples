@@ -1,6 +1,4 @@
-use pinocchio::{
-    account_info::AccountInfo, ProgramResult, program_error::ProgramError,
-};
+use pinocchio::{account_info::AccountInfo, program_error::ProgramError, ProgramResult};
 
 use pinocchio_token::instructions::ThawAccount;
 
@@ -9,11 +7,12 @@ pub fn thaw_account(accounts: &[AccountInfo]) -> ProgramResult {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
-    ThawAccount { 
-        token, 
-        mint, 
-        freeze_authority  
-    }.invoke()?;
-   
+    ThawAccount {
+        token,
+        mint,
+        freeze_authority,
+    }
+    .invoke()?;
+
     Ok(())
 }

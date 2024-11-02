@@ -1,6 +1,4 @@
-use pinocchio::{
-    account_info::AccountInfo, ProgramResult, program_error::ProgramError,
-};
+use pinocchio::{account_info::AccountInfo, program_error::ProgramError, ProgramResult};
 
 use pinocchio_token::instructions::Revoke;
 
@@ -9,10 +7,7 @@ pub fn revoke(accounts: &[AccountInfo]) -> ProgramResult {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
-    Revoke { 
-        token, 
-        authority
-    }.invoke()?;
-   
+    Revoke { token, authority }.invoke()?;
+
     Ok(())
 }

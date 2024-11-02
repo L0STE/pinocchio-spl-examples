@@ -1,8 +1,6 @@
-use pinocchio::{
-    account_info::AccountInfo, ProgramResult, program_error::ProgramError,
-};
+use pinocchio::{account_info::AccountInfo, program_error::ProgramError, ProgramResult};
 
-use pinocchio_token::state::{TokenAccount, AccountState};
+use pinocchio_token::state::{AccountState, TokenAccount};
 
 pub fn token_getters(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     let [token] = accounts else {
@@ -15,7 +13,7 @@ pub fn token_getters(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     assert_eq!(token_account.mint(), mint);
 
     // Note: Authority is the owner of the token account
-    let authority = unsafe { *(data.as_ptr().add(32) as *const [u8; 32]) }; 
+    let authority = unsafe { *(data.as_ptr().add(32) as *const [u8; 32]) };
     assert_eq!(token_account.authority(), authority);
 
     let amount = unsafe { *(data.as_ptr().add(64) as *const u64) };
@@ -56,6 +54,6 @@ pub fn token_getters(accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     } else {
         assert_eq!(token_account.close_authority(), None);
     }
-   
+
     Ok(())
 }

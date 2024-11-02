@@ -1,27 +1,27 @@
 use pinocchio::program_error::ProgramError;
 
-pub mod initialize_mint_2;
+pub mod approve;
+pub mod approve_checked;
+pub mod burn;
+pub mod burn_checked;
+pub mod close_account;
+pub mod freeze_account;
+pub mod initialize_account;
+pub mod initialize_account_2;
+pub mod initialize_account_3;
 pub mod initialize_mint;
-pub mod mint_to_checked;
+pub mod initialize_mint_2;
 pub mod mint_to;
+pub mod mint_to_checked;
 pub mod revoke;
 pub mod set_authority;
 pub mod sync_native;
 pub mod thaw_account;
-pub mod transfer_checked;
 pub mod transfer;
-pub mod approve_checked;
-pub mod approve;
-pub mod burn_checked;
-pub mod burn;
-pub mod close_account;
-pub mod freeze_account;
-pub mod initialize_account_2;
-pub mod initialize_account_3;
-pub mod initialize_account;
+pub mod transfer_checked;
 
-pub mod token_getters;
 pub mod mint_getters;
+pub mod token_getters;
 
 #[derive(Clone, Copy, Debug)]
 pub enum TestInstruction {
