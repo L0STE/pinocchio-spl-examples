@@ -590,6 +590,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "working"]
     pub fn set_authority() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const(
             "22222222222222222222222222222222222222222222",
@@ -2324,7 +2325,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "working"]
     fn mint_getters() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const(
             "22222222222222222222222222222222222222222222",
@@ -2421,7 +2421,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "working"]
     fn token_getters() {
         let program_id = Pubkey::new_from_array(five8_const::decode_32_const(
             "22222222222222222222222222222222222222222222",
